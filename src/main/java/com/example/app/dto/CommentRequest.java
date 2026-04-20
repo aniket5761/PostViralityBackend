@@ -6,6 +6,6 @@ import lombok.Data;
 public class CommentRequest {
     private Long author_id;
     private String content;
-    private int depth_level;
     private boolean isBot;
+    private Long parent_comment_id;
 }

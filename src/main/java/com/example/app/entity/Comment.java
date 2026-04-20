@@ -15,6 +15,7 @@ public class Comment {
     private Long post_id;
     private Long author_id;
     private String content;
+    private Long parent_comment_id;
     private int depth_level;
     private LocalDateTime created_at;
 }

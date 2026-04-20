@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class PostService {
     
     private final PostRepository postRepository;    
-    private final ViraityService viraityService;
+    private final ViralityService viralityService;
     
   
     public Post createPost(PostRequest postRequest) {
@@ -23,7 +23,7 @@ public class PostService {
         post.setCreated_at(LocalDateTime.now());
         Post savedPost = postRepository.save(post);
         System.out.println("Post created with ID: " + savedPost.getId());
-        viraityService.getViraityScore(savedPost.getId());
+        viralityService.getViraityScore(savedPost.getId());
         
         return savedPost;
     }
@@ -32,10 +32,10 @@ public class PostService {
     String type;
     if(isBot) type = "BOT_REPLY";
     else type = "HUMAN_LIKE";
-    return viraityService.increaseVirality(postId, type);
+    return viralityService.increaseVirality(postId, type);
 }
 
     public Long getPostVirality(Long postId) {
-        return viraityService.getViraityScore(postId);
+        return viralityService.getViraityScore(postId);
     }
 }

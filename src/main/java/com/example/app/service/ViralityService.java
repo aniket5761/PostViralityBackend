@@ -7,7 +7,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
-public class ViraityService {
+public class ViralityService {
 
     
     private final RedisTemplate<String, String> redisTemplate;
@@ -15,8 +15,7 @@ public class ViraityService {
     public Long increaseVirality(Long postId, String type){
         String key = "post:" + postId + ":viral_score";
         Long points = pointsToAdd(type);
-        Long newScore = redisTemplate.opsForValue().increment(key, points);   
-        return newScore;
+        return redisTemplate.opsForValue().increment(key, points);
     }
 
     private Long pointsToAdd(String type) {
