@@ -6,6 +6,10 @@ import lombok.Data;
 public class CommentRequest {
     private Long author_id;
     private String content;
-    private boolean isBot;
+    private boolean bot;
     private Long parent_comment_id;
+
+    public void setIsBot(boolean bot) {
+        this.bot = bot;
+    }
 }

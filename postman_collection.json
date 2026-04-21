@@ -1,0 +1,545 @@
+{
+  "info": {
+    "name": "Bot Guardrail System ",
+    "description": "Comprehensive Postman collection for testing all API endpoints with guardrails, concurrency safety, and data integrity verification",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Create Post",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response contains post ID', function () {",
+              "    pm.expect(pm.response.json().id).to.exist;",
+              "});",
+              "pm.environment.set('post_id', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 1,\n  \"content\": \"Check out this amazing post! Really excited to share this with everyone.\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts"]
+        }
+      },
+      "response": [
+        {
+          "name": "Create Post - Success (200 OK)",
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"id\": 1,\n  \"content\": \"Check out this amazing post! Really excited to share this with everyone.\",\n  \"author_id\": 1,\n  \"created_at\": \"2026-04-21T10:30:00\",\n  \"virality_score\": 0,\n  \"message\": \"Post created successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Add Human Comment (+50 Virality)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Virality increased by 50', function () {",
+              "    pm.expect(pm.response.json().post_virality_after_comment).to.equal(50);",
+              "});",
+              "pm.environment.set('comment_id', pm.response.json().comment_id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 2,\n  \"content\": \"This is such an insightful observation! Really helped me understand this topic better.\",\n  \"parent_comment_id\": null,\n  \"is_bot\": false\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Human Comment - Success (200 OK)",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n  \"comment_id\": 1,\n  \"post_id\": 1,\n  \"content\": \"This is such an insightful observation! Really helped me understand this topic better.\",\n  \"author_id\": 2,\n  \"depth_level\": 1,\n  \"post_virality_after_comment\": 50,\n  \"message\": \"Comment added successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Bot Reply - First Allowed (+1 Virality)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Virality increased by 1', function () {",
+              "    pm.expect(pm.response.json().post_virality_after_comment).to.equal(51);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 100,\n  \"content\": \"Great perspective! I completely agree with your analysis on this topic.\",\n  \"parent_comment_id\": null,\n  \"is_bot\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Bot Comment - Success (200 OK)",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n  \"comment_id\": 2,\n  \"post_id\": 1,\n  \"content\": \"Great perspective! I completely agree with your analysis on this topic.\",\n  \"author_id\": 100,\n  \"depth_level\": 1,\n  \"post_virality_after_comment\": 51,\n  \"message\": \"Comment added successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "4. Bot Cooldown Violation - Should Fail (429)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 429 (Too Many Requests)', function () {",
+              "    pm.response.to.have.status(429);",
+              "});",
+              "pm.test('Error message mentions 10 minute cooldown', function () {",
+              "    pm.expect(pm.response.json().error).to.include('10 minutes');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 100,\n  \"content\": \"Another thoughtful comment from the same bot immediately after.\",\n  \"parent_comment_id\": null,\n  \"is_bot\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Cooldown Violation - Expected Failure (429)",
+          "status": "Too Many Requests",
+          "code": 429,
+          "header": [],
+          "body": "{\n  \"error\": \"Bot must wait 10 minutes before interacting with this human again\",\n  \"timestamp\": \"2026-04-21T10:31:00\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "5. Add 99 More Bot Comments (Sequential)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": {{bot_id}},\n  \"content\": \"This is a bot comment that adds value to the discussion. Really helpful insight!\",\n  \"parent_comment_id\": null,\n  \"is_bot\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Bot Comments 2-100 - Success (200 OK)",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n  \"comment_id\": 50,\n  \"post_id\": 1,\n  \"content\": \"This is a bot comment that adds value to the discussion. Really helpful insight!\",\n  \"author_id\": 150,\n  \"depth_level\": 1,\n  \"post_virality_after_comment\": 100,\n  \"message\": \"Comment added successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "6. 101st Bot Comment - Horizontal Cap Exceeded (429)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 429 (Too Many Requests)', function () {",
+              "    pm.response.to.have.status(429);",
+              "});",
+              "pm.test('Error message mentions bot replies limit', function () {",
+              "    pm.expect(pm.response.json().error).to.include('Too many bot replies');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 200,\n  \"content\": \"This bot comment should be rejected due to horizontal cap being reached.\",\n  \"parent_comment_id\": null,\n  \"is_bot\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Horizontal Cap Exceeded - Expected Failure (429)",
+          "status": "Too Many Requests",
+          "code": 429,
+          "header": [],
+          "body": "{\n  \"error\": \"Too many bot replies on this post\",\n  \"timestamp\": \"2026-04-21T10:32:00\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "7. Vertical Cap Test - Deep Thread (Should Fail at depth 21)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 429 (Too Many Requests)', function () {",
+              "    pm.response.to.have.status(429);",
+              "});",
+              "pm.test('Error message mentions thread depth', function () {",
+              "    pm.expect(pm.response.json().error).to.include('thread depth');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 300,\n  \"content\": \"Bot attempting to reply at maximum thread depth level.\",\n  \"parent_comment_id\": 20,\n  \"is_bot\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Vertical Cap Exceeded - Expected Failure (429)",
+          "status": "Too Many Requests",
+          "code": 429,
+          "header": [],
+          "body": "{\n  \"error\": \"Maximum thread depth reached\",\n  \"timestamp\": \"2026-04-21T10:33:00\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "8. Like Post - Human Like (+20 Virality)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Points added is 20 for human like', function () {",
+              "    pm.expect(pm.response.json().points_added).to.equal(20);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/like?userId=5&isBot=false",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "like"],
+          "query": [
+            {
+              "key": "userId",
+              "value": "5"
+            },
+            {
+              "key": "isBot",
+              "value": "false"
+            }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Human Like - Success (200 OK)",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n  \"post_id\": 1,\n  \"liked_by_user\": 5,\n  \"bot_like\": false,\n  \"points_added\": 20,\n  \"new_virality_score\": 120,\n  \"message\": \"Post liked successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "9. Like Post - Bot Like (+1 Virality)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Points added is 1 for bot like', function () {",
+              "    pm.expect(pm.response.json().points_added).to.equal(1);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{post_id}}/like?userId=100&isBot=true",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{post_id}}", "like"],
+          "query": [
+            {
+              "key": "userId",
+              "value": "100"
+            },
+            {
+              "key": "isBot",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "response": [
+        {
+          "name": "Bot Like - Success (200 OK)",
+          "status": "OK",
+          "code": 200,
+          "header": [],
+          "body": "{\n  \"post_id\": 1,\n  \"liked_by_user\": 100,\n  \"bot_like\": true,\n  \"points_added\": 1,\n  \"new_virality_score\": 121,\n  \"message\": \"Post liked successfully\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "🔥 RACE CONDITION TEST - Create Post (Fresh)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.environment.set('race_post_id', pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": 1,\n  \"content\": \"Post for race condition testing with 200 concurrent bots\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "🔥 RACE CONDITION TEST - 200 Concurrent Bots (Use Postman Runner)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is either 200 or 429', function () {",
+              "    pm.expect([200, 429]).to.include(pm.response.code);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author_id\": {{concurrent_bot_id}},\n  \"content\": \"Bot engaging with this post concurrently alongside 199 other bots!\",\n  \"parent_comment_id\": null,\n  \"is_bot\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/posts/{{race_post_id}}/comments",
+          "protocol": "http",
+          "host": ["{{base_url}}"],
+          "path": ["api", "posts", "{{race_post_id}}", "comments"]
+        }
+      },
+      "response": [
+        {
+          "name": "Race Condition - 200 Concurrent Results",
+          "status": "Mixed (200 + 429)",
+          "code": "200/429",
+          "header": [],
+          "body": "Expected Results:\n==================\n✓ Requests 1-100: HTTP 200 (Successfully saved to DB)\n✓ Requests 101-200: HTTP 429 (Rejected - Too many bot replies)\n✓ Redis counter (post:N:bot_count): Exactly 100\n✓ Database count: Exactly 100 comments\n✓ Zero race condition vulnerabilities\n✓ Zero database overflow\n✓ Atomic operations guarantee\n\nHow to Execute in Postman:\n==========================\n1. Click the three dots (•••) next to this request\n2. Select 'Run Collection'\n3. Set iterations to 200\n4. Set delay to 0ms\n5. Run\n\nExpected Output in Test Results:\n- 100 requests with ✓ (pass)\n- 100 requests with ✗ (expected failure)\n- Total: ~200 requests in <5 seconds\n\nDatabase Verification:\n======================\nSELECT COUNT(*) FROM comments WHERE post_id = {{race_post_id}};\n→ Should return EXACTLY 100\n\nRedis Verification:\n===================\nredis-cli\n> GET 'post:{{race_post_id}}:bot_count'\n→ Should return EXACTLY 100"
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "post_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "race_post_id",
+      "value": "2",
+      "type": "string"
+    },
+    {
+      "key": "bot_id",
+      "value": "100",
+      "type": "number"
+    },
+    {
+      "key": "concurrent_bot_id",
+      "value": "1000",
+      "type": "number"
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import com.example.app.repo.PostRepository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -19,7 +20,9 @@ public class CommentService{
     private final PostRepository postRepository;
     private final ViralityService viralityService;
     private final GuardrailService guardrailService;
+    private final NotificationService notificationService;
 
+    @Transactional
     public Comment addComment(Long postId, CommentRequest commentRequest) {
         boolean isBot = commentRequest.isBot();
         Post post = postRepository.findById(postId)
@@ -42,12 +45,14 @@ public class CommentService{
 
         String cooldownKey = null;
         boolean horizontalIncremented = false;
+        Long notifiedUserId = null;
 
         try {
             if (isBot) {
                 Long humanId = parentComment != null
                         ? parentComment.getAuthor_id()
                         : post.getAuthor_id();
+                notifiedUserId = humanId;
 
                 cooldownKey = guardrailService.cooldownCap(commentRequest.getAuthor_id(), humanId);
                 guardrailService.horizontalCap(postId);
@@ -67,6 +72,10 @@ public class CommentService{
             Long newScore = viralityService.increaseVirality(postId, type);
 
             System.out.println("Post " + postId + " virality after comment: " + newScore);
+
+            if (isBot && notifiedUserId != null) {
+                notificationService.handleBotInteraction(notifiedUserId, commentRequest.getAuthor_id());
+            }
 
             return savedComment;
         } catch (RuntimeException ex) {
